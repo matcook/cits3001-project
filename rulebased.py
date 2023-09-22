@@ -7,7 +7,8 @@ import gym
 
 print(SIMPLE_MOVEMENT)
 
-DISTANCE = 50
+HORIZONTAL_DISTANCE = 60
+VERTICAL_DISTANCE = 120
 
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
@@ -50,8 +51,9 @@ def detect_all_objects(observation):
     if mario_positions:
         mario_x, mario_y = mario_positions[0]
         mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
-        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + DISTANCE, observation_bgr.shape[1])
-        y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
+        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + HORIZONTAL_DISTANCE, observation_bgr.shape[1])
+        #y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
+        y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0] # Keeping the full height for simplicity
         roi = (x_start, x_end, y_start, y_end)
     else:
         roi = None
@@ -115,6 +117,7 @@ def rule_based_action(observation):
     goomba_positions = detected_objects["goomba"]
     pipe_upper_positions = detected_objects["pipe_upper"]
     block_positions = detected_objects["blocks"]
+ 
     # Default action
     action = 1  # corresponds to running right in SIMPLE_MOVEMENT
 
@@ -122,7 +125,7 @@ def rule_based_action(observation):
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
         for goomba_position in goomba_positions:
             distance = goomba_position[0] - mario_central_x
-            if 0 < distance <= 30:
+            if 0 < distance <= 20:
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
 
@@ -136,7 +139,6 @@ def rule_based_action(observation):
     
     if mario_positions:
         if len(block_positions) < 4:
-            print('fired')
             action = 4
 
     return action, detected_objects
