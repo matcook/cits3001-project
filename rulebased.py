@@ -7,6 +7,8 @@ import gym
 
 print(SIMPLE_MOVEMENT)
 
+DISTANCE = 50
+
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
 blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for i in range(1, 5)]
@@ -48,7 +50,7 @@ def detect_all_objects(observation):
     if mario_positions:
         mario_x, mario_y = mario_positions[0]
         mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
-        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + 100, observation_bgr.shape[1])
+        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + DISTANCE, observation_bgr.shape[1])
         y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
         roi = (x_start, x_end, y_start, y_end)
     else:
