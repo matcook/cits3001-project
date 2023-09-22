@@ -16,7 +16,7 @@ blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for 
 koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B','C', 'D']]
 #mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
-pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
+#pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
 #question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 #tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
@@ -65,7 +65,7 @@ def detect_all_objects(observation):
         "koopas": detect_objects(observation_bgr, koopas_templates, roi),
         #"mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
         "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], roi),
-        "pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
+        #"pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
         #"question": detect_objects(observation_bgr, question_templates, roi)
     }
 
@@ -78,7 +78,7 @@ def draw_borders_on_detected_objects(observation, detected_objects, color_dict=N
             "blocks": (255, 0, 0),
             "koopas": (255, 255, 0),
             "pipe_upper": (255, 0, 255),
-            "pipe_lower": (0, 255, 255),
+            #"pipe_lower": (0, 255, 255),
             #"mushroom": (0, 128, 255),
             #"question": (128, 0, 255)
         }
