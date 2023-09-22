@@ -5,69 +5,90 @@ import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import gym
 
-# Load all Mario templates
-template_files = [f'templates/mario{chr(i)}.png' for i in range(65, 72)]  # 65 = 'A', 72 = 'G' + 1
-mario_templates = [cv2.imread(filename, cv2.IMREAD_COLOR) for filename in template_files]
+# Load all templates
+mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
+blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for i in range(1, 5)]
+koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B']]
+mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
+pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
+pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
+question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
+tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
-print(SIMPLE_MOVEMENT)
-
-def detect_mario(observation_bgr, templates):
-    max_val = -1  # initial score
-    best_location = None
+def draw_rectangles(image, locations, template_shape, color=(0, 255, 0)):
+    """Draw rectangles around all detected positions of an object."""
+    # Convert the image to a compatible type
+    image = np.ascontiguousarray(image, dtype=np.uint8)
     
+    for (x, y) in locations:
+        bottom_right = (x + template_shape[1], y + template_shape[0])
+        cv2.rectangle(image, (x, y), bottom_right, color, 2)
+    
+    return image
+
+def detect_objects(observation_bgr, templates):
+    best_locations = []
+
     for template in templates:
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
+        threshold = 0.6
+        loc = np.where(res >= threshold)
         
-        # Find the maximum matching value and its location for this template
-        min_val, template_max_val, min_loc, template_max_loc = cv2.minMaxLoc(res)
-        
-        # If this template's score is better than the previous best, update the best_location and max_val
-        if template_max_val > max_val:
-            max_val = template_max_val
-            best_location = template_max_loc
+        if loc[0].size:
+            best_locations.extend(zip(*loc[::-1]))
 
-    return best_location
+    return best_locations
 
-def detect_goomba(observation_bgr, template):
-    res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
-    threshold = 0.6  # Adjust this value if needed
-    loc = np.where(res >= threshold)
-    return list(zip(*loc[::-1]))
+def detect_all_objects(observation):
+    observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
+    
+    return {
+        "mario": detect_objects(observation_bgr, mario_templates + tall_mario_templates),
+        "goomba": detect_objects(observation_bgr, [goomba_template]),
+        "blocks": detect_objects(observation_bgr, blocks_templates),
+        "koopas": detect_objects(observation_bgr, koopas_templates),
+        "mushroom": detect_objects(observation_bgr, [mushroom_template]),
+        "pipe": detect_objects(observation_bgr, [pipe_upper_template] + [pipe_lower_template]),
+        #"pipe_lower": detect_objects(observation_bgr, [pipe_lower_template]),
+        "question": detect_objects(observation_bgr, question_templates)
+    }
 
 def rule_based_action(observation):
-    observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
-    mario_position = detect_mario(observation_bgr, mario_templates)
-    goomba_positions = detect_goomba(observation_bgr, goomba_template)
+    # Make a copy of the observation to draw on
+    observation_copy = observation.copy()
 
-    # Debug - Visualize detections
-    #debug_image = observation_bgr.copy()
-    #if mario_position:
-    #    mario_end = (mario_position[0] + mario_templates[0].shape[1], mario_position[1] + mario_templates[0].shape[0])
-    #    cv2.rectangle(debug_image, mario_position, mario_end, (255, 0, 0), 2)  # Blue rectangle for Mario
-    #for pos in goomba_positions:
-    #    goomba_end = (pos[0] + goomba_template.shape[1], pos[1] + goomba_template.shape[0])
-    #    cv2.rectangle(debug_image, pos, goomba_end, (0, 0, 255), 2)  # Red rectangle for Goombas
-    #cv2.imshow('Debug', debug_image)
-    #cv2.waitKey(1)
+    detected_objects = detect_all_objects(observation)
+    mario_positions = detected_objects["mario"]
+    goomba_positions = detected_objects["goomba"]
+    pipe_positions = detected_objects["pipe"]
+    question_positions = detected_objects["question"]
+    block_positions = detected_objects["blocks"]
 
-    # Debug - Print positions and distances
-    #if mario_position:
-    #    print("Mario Position:", mario_position)
-    #print("Goomba Positions:", goomba_positions)
+
+    # Drawing rectangles for debugging
+    draw_rectangles(observation_copy, mario_positions, mario_templates[0].shape, color=(0, 255, 0))
+    draw_rectangles(observation_copy, goomba_positions, goomba_template.shape, color=(0, 0, 255))
+    draw_rectangles(observation_copy, pipe_positions, goomba_template.shape, color=(255, 0, 0))
+    draw_rectangles(observation_copy, question_positions, goomba_template.shape, color=(255, 0, 255))
+    draw_rectangles(observation_copy, block_positions, goomba_template.shape, color=(255, 255, 0))
+    # ... (and repeat for other detected objects as necessary with different colors)
     
-    # Default to moving right
-    action = 3 # 1 corresponds to moving right in SIMPLE_MOVEMENT
+    # Show the modified observation with rectangles
+    cv2.imshow('Debugging Observation', cv2.cvtColor(observation_copy, cv2.COLOR_RGB2BGR))
+    cv2.waitKey(1)  # Display the image for a short duration
 
-    if mario_position and goomba_positions:
-        mario_central_x = mario_position[0] + mario_templates[0].shape[1] // 2
+    # Default action
+    action = 3  # corresponds to running right in SIMPLE_MOVEMENT
+
+    if mario_positions and goomba_positions:
+        mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
         for goomba_position in goomba_positions:
             distance = goomba_position[0] - mario_central_x
-            #print("Distance to Goomba:", distance)
             if 0 < distance <= 30:
-                action = 4  # 4 corresponds to jumping right in SIMPLE_MOVEMENT
+                action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
-    #print("selected action: ", action)
+
     return action
 
 # Setup environment
@@ -79,8 +100,6 @@ observation, info = env.reset()
 for step in range(10000):
     action = rule_based_action(observation)
     obs, reward, terminated, truncated, info = env.step(action)
-    #observation, reward, done, info = env.step(action)
-
     if terminated or truncated:
         observation, info = env.reset()
 
