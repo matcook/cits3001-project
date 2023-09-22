@@ -11,11 +11,11 @@ print(SIMPLE_MOVEMENT)
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
 blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for i in range(1, 5)]
 koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B']]
-mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
+#mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
 pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
-question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
-tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
+#question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
+#tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
 def detect_objects(observation_bgr, templates, roi=None):
@@ -41,7 +41,8 @@ def detect_objects(observation_bgr, templates, roi=None):
 
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
-    mario_positions = detect_objects(observation_bgr, mario_templates + tall_mario_templates)
+    #mario_positions = detect_objects(observation_bgr, mario_templates + tall_mario_templates)
+    mario_positions = detect_objects(observation_bgr, mario_templates)
     
     # Calculate ROI based on Mario's position
     if mario_positions:
@@ -58,10 +59,10 @@ def detect_all_objects(observation):
         "goomba": detect_objects(observation_bgr, [goomba_template], roi),
         "blocks": detect_objects(observation_bgr, blocks_templates, roi),
         "koopas": detect_objects(observation_bgr, koopas_templates, roi),
-        "mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
+        #"mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
         "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], roi),
         "pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
-        "question": detect_objects(observation_bgr, question_templates, roi)
+        #"question": detect_objects(observation_bgr, question_templates, roi)
     }
 
 def rule_based_action(observation):
