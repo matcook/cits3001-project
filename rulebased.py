@@ -114,7 +114,7 @@ def rule_based_action(observation):
     mario_positions = detected_objects["mario"]
     goomba_positions = detected_objects["goomba"]
     pipe_upper_positions = detected_objects["pipe_upper"]
-
+    block_positions = detected_objects["blocks"]
     # Default action
     action = 1  # corresponds to running right in SIMPLE_MOVEMENT
 
@@ -134,6 +134,11 @@ def rule_based_action(observation):
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
     
+    if mario_positions:
+        if len(block_positions) < 4:
+            print('fired')
+            action = 4
+
     return action, detected_objects
 
 # Setup environment
