@@ -18,31 +18,50 @@ question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR)
 tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
-def detect_objects(observation_bgr, templates):
+def detect_objects(observation_bgr, templates, roi=None):
     best_locations = []
+
+    if roi:  # If a Region of Interest (ROI) is provided
+        x_start, x_end, y_start, y_end = roi
+        observation_bgr = observation_bgr[y_start:y_end, x_start:x_end]
 
     for template in templates:
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
-        threshold = 0.46  
+        threshold = 0.46
         loc = np.where(res >= threshold)
         
         if loc[0].size:
-            best_locations.extend(zip(*loc[::-1]))
+            if roi:  # Adjust the location based on the ROI
+                adjusted_loc = [x + x_start for x in loc[1]], [y + y_start for y in loc[0]]
+                best_locations.extend(zip(*adjusted_loc))
+            else:
+                best_locations.extend(zip(*loc[::-1]))
 
     return best_locations
 
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
+    mario_positions = detect_objects(observation_bgr, mario_templates + tall_mario_templates)
+    
+    # Calculate ROI based on Mario's position
+    if mario_positions:
+        mario_x, mario_y = mario_positions[0]
+        mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
+        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + 100, observation_bgr.shape[1])
+        y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
+        roi = (x_start, x_end, y_start, y_end)
+    else:
+        roi = None
     
     return {
-        "mario": detect_objects(observation_bgr, mario_templates + tall_mario_templates),
-        "goomba": detect_objects(observation_bgr, [goomba_template]),
-        "blocks": detect_objects(observation_bgr, blocks_templates),
-        "koopas": detect_objects(observation_bgr, koopas_templates),
-        "mushroom": detect_objects(observation_bgr, [mushroom_template]),
-        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template]),
-        "pipe_lower": detect_objects(observation_bgr, [pipe_lower_template]),
-        "question": detect_objects(observation_bgr, question_templates)
+        "mario": mario_positions,
+        "goomba": detect_objects(observation_bgr, [goomba_template], roi),
+        "blocks": detect_objects(observation_bgr, blocks_templates, roi),
+        "koopas": detect_objects(observation_bgr, koopas_templates, roi),
+        "mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
+        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], roi),
+        "pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
+        "question": detect_objects(observation_bgr, question_templates, roi)
     }
 
 def rule_based_action(observation):
