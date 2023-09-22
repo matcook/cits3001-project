@@ -13,7 +13,7 @@ VERTICAL_DISTANCE = 120
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
 blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for i in range(1, 5)]
-koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B']]
+koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B','C', 'D']]
 #mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
 pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
@@ -70,17 +70,6 @@ def detect_all_objects(observation):
     }
 
 def draw_borders_on_detected_objects(observation, detected_objects, color_dict=None):
-    """
-    Draw borders around detected objects in the given observation.
-    
-    Args:
-    - observation: The observation/frame where we want to draw the borders.
-    - detected_objects: Dictionary of detected object positions for each type.
-    - color_dict: Dictionary specifying colors for each object type. If None, default colors will be used.
-    
-    Returns:
-    Modified observation with drawn borders.
-    """
     if color_dict is None:
         # Default colors in BGR format
         color_dict = {
@@ -117,7 +106,8 @@ def rule_based_action(observation):
     goomba_positions = detected_objects["goomba"]
     pipe_upper_positions = detected_objects["pipe_upper"]
     block_positions = detected_objects["blocks"]
- 
+    koopa_positions = detected_objects["koopas"]
+
     # Default action
     action = 1  # corresponds to running right in SIMPLE_MOVEMENT
 
@@ -129,6 +119,14 @@ def rule_based_action(observation):
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
 
+    if mario_positions and koopa_positions:
+        mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
+        for koopa_position in koopa_positions:
+            distance = koopa_position[0] - mario_central_x
+            if 0 < distance <= 25:
+                action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
+                break
+    
     if mario_positions and pipe_upper_positions:
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
         for pipe_position in pipe_upper_positions:
