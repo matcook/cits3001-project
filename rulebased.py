@@ -65,6 +65,48 @@ def detect_all_objects(observation):
         #"question": detect_objects(observation_bgr, question_templates, roi)
     }
 
+def draw_borders_on_detected_objects(observation, detected_objects, color_dict=None):
+    """
+    Draw borders around detected objects in the given observation.
+    
+    Args:
+    - observation: The observation/frame where we want to draw the borders.
+    - detected_objects: Dictionary of detected object positions for each type.
+    - color_dict: Dictionary specifying colors for each object type. If None, default colors will be used.
+    
+    Returns:
+    Modified observation with drawn borders.
+    """
+    if color_dict is None:
+        # Default colors in BGR format
+        color_dict = {
+            "mario": (0, 0, 255),
+            "goomba": (0, 255, 0),
+            "blocks": (255, 0, 0),
+            "koopas": (255, 255, 0),
+            "pipe_upper": (255, 0, 255),
+            "pipe_lower": (0, 255, 255),
+            #"mushroom": (0, 128, 255),
+            #"question": (128, 0, 255)
+        }
+
+    for obj_type, positions in detected_objects.items():
+        for position in positions:
+            top_left = position
+            # Try to find the template variable using both singular and plural form
+            template_name_singular = f"{obj_type}_template"
+            template_name_plural = f"{obj_type}_templates"
+            template = globals().get(template_name_singular, 
+                                     globals().get(template_name_plural, [None])[0])
+            
+            if template is None:
+                continue
+            
+            bottom_right = (top_left[0] + template.shape[1], top_left[1] + template.shape[0])
+            cv2.rectangle(observation, top_left, bottom_right, color_dict.get(obj_type, (0, 0, 255)), 2)  # 2 is the thickness of the rectangle border
+    
+    return observation
+
 def rule_based_action(observation):
     detected_objects = detect_all_objects(observation)
     mario_positions = detected_objects["mario"]
@@ -90,7 +132,7 @@ def rule_based_action(observation):
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
     
-    return action
+    return action, detected_objects
 
 # Setup environment
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
@@ -99,10 +141,17 @@ env = JoypadSpace(env, SIMPLE_MOVEMENT)
 observation, info = env.reset()
 
 for step in range(10000):
-    action = rule_based_action(observation)
+    action, detected_objects = rule_based_action(observation)
+    
+    # Visual debug: Drawing borders around detected objects
+    observation_with_borders = draw_borders_on_detected_objects(observation.copy(), detected_objects)
+    cv2.imshow("Debug Observation", cv2.cvtColor(observation_with_borders, cv2.COLOR_RGB2BGR))
+    cv2.waitKey(1)  # To update the window
+
     #print(action)
     obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         observation, info = env.reset()
 
 env.close()
+
