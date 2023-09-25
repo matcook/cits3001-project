@@ -34,6 +34,8 @@ def detect_objects(observation_bgr, templates, threshold, roi=None):
         observation_bgr = observation_bgr[y_start:y_end, x_start:x_end]
 
     for template in templates:
+        if observation_bgr.shape[0] < template.shape[0] or observation_bgr.shape[1] < template.shape[1]:
+            continue  # Skip this template
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
         threshold = threshold
         loc = np.where(res >= threshold)
@@ -52,11 +54,12 @@ def detect_all_objects(observation):
     mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
     if mario_positions:
         y_end = mario_positions[0][1] + 70
+        x_start = mario_positions[0][0] + 5
         #print(mario_positions[0][1])
     else:
         y_end = observation_bgr.shape[0]
-    
-    x_start, x_end = observation_bgr.shape[1] // 2, HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
+        x_start = observation_bgr.shape[1] // 2
+    x_end = HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
     y_start = VERTICAL_DISTANCE 
     roi = (x_start, x_end, y_start, y_end)
     
@@ -114,6 +117,7 @@ def rule_based_action(observation):
 
     if mario_positions:
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
+        print(mario_positions[0][1])
     else:
         mario_central_x = 0
 
@@ -154,10 +158,13 @@ def rule_based_action(observation):
     if mario_positions: 
         if mario_positions[0][1] < 126:
             action = 3
+
+        elif mario_positions[0][1] > 126 and step_block_positions:
+            action = 4
     #if step_block_positions and not ground_block_positions:
         #if len(step_block_positions) <= 2:
             #action = 4
-
+    
     #if step_block_positions and not ground_block_positions:
         #action = 4
     #if len(step_block_positions) == 6 and len(ground_block_positions) == 0:
@@ -170,16 +177,16 @@ def rule_based_action(observation):
     else:
         last_ground_block_positions_timer = 0
 
-    if last_ground_block_positions_timer in range(50, 70):
+    if last_ground_block_positions_timer in range(50, 55):
         action = 6
 
-    if last_ground_block_positions_timer in range(70, 100):
-        action = 1
+    if last_ground_block_positions_timer in range(55, 65):
+        action = 3
 
-    if last_ground_block_positions_timer in range(100, 140):
-        action = 4
+    if last_ground_block_positions_timer in range(65, 75):
+        action = 2
 
-    if last_ground_block_positions_timer > 140:
+    if last_ground_block_positions_timer > 75:
         last_ground_block_positions_timer = 0
     
     last_ground_block_positions = ground_block_positions
@@ -194,7 +201,7 @@ observation, info = env.reset()
 
 for step in range(10000):
     action, detected_objects = rule_based_action(observation)
-    print(SIMPLE_MOVEMENT[action])
+    #print(SIMPLE_MOVEMENT[action])
     
     # Visual debug: Drawing borders around detected objects
     observation_with_borders = draw_borders_on_detected_objects(observation.copy(), detected_objects)
