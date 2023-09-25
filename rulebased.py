@@ -18,14 +18,14 @@ BLOCK_THRESHOLD = 0.8
 
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
-blocks_templates = [cv2.imread(f'templates/block{i}.png', cv2.IMREAD_COLOR) for i in range(1, 5)]
+ground_block_template = cv2.imread('templates/block2.png', cv2.IMREAD_COLOR)
+step_block_template = cv2.imread('templates/block4.png', cv2.IMREAD_COLOR)
 koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B','C', 'D']]
-#mushroom_template = cv2.imread('templates/mushroom_red.png', cv2.IMREAD_COLOR)
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
-#pipe_lower_template = cv2.imread('templates/pipe_lower_section.png', cv2.IMREAD_COLOR)
-#question_templates = [cv2.imread(f'templates/question{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
-#tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
+
+mario_last_x = 0
+mario_last_x_timer = 0
 
 def detect_objects(observation_bgr, templates, threshold, roi=None):
     best_locations = []
@@ -50,43 +50,31 @@ def detect_objects(observation_bgr, templates, threshold, roi=None):
 
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
-    #mario_positions = detect_objects(observation_bgr, mario_templates + tall_mario_templates)
     mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
     
-    # Calculate ROI based on Mario's position
-    #if mario_positions:
-    #mario_x, mario_y = mario_positions[0]
-    #mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
     x_start, x_end = observation_bgr.shape[1] // 2, HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
-    #y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
-    y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0] # Keeping the full height for simplicity
+    y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0]
     roi = (x_start, x_end, y_start, y_end)
-    
     
     return {
         "mario": mario_positions,
         "goomba": detect_objects(observation_bgr, [goomba_template], GOOMBA_THRESHOLD, roi),
-        "blocks": detect_objects(observation_bgr, blocks_templates, BLOCK_THRESHOLD, roi),
+        "ground_block": detect_objects(observation_bgr, [ground_block_template], BLOCK_THRESHOLD, roi),
+        "step_block": detect_objects(observation_bgr, [step_block_template], BLOCK_THRESHOLD, roi),
         "koopas": detect_objects(observation_bgr, koopas_templates, KOOPA_THRESHOLD, roi),
-        #"mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
         "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], PIPE_THRESHOLD, roi),
-        #"pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
-        #"question": detect_objects(observation_bgr, question_templates, roi)
     }
 
-def draw_borders_on_detected_objects(observation, detected_objects, color_dict=None):
-    if color_dict is None:
-        # Default colors in BGR format
-        color_dict = {
-            "mario": (0, 0, 255),
-            "goomba": (0, 255, 0),
-            "blocks": (255, 0, 0),
-            "koopas": (255, 255, 0),
-            "pipe_upper": (255, 0, 255),
-            #"pipe_lower": (0, 255, 255),
-            #"mushroom": (0, 128, 255),
-            #"question": (128, 0, 255)
-        }
+def draw_borders_on_detected_objects(observation, detected_objects):
+    # Default colors in BGR format
+    color_dict = {
+        "mario": (0, 0, 255),
+        "goomba": (0, 255, 0),
+        "ground_block": (255, 0, 0),
+        "step_block": (255, 0, 0),
+        "koopas": (255, 255, 0),
+        "pipe_upper": (255, 0, 255),
+    }
 
     for obj_type, positions in detected_objects.items():
         for position in positions:
@@ -106,43 +94,58 @@ def draw_borders_on_detected_objects(observation, detected_objects, color_dict=N
     return observation
 
 def rule_based_action(observation):
+    global mario_last_x
+    global mario_last_x_timer
+
     detected_objects = detect_all_objects(observation)
     mario_positions = detected_objects["mario"]
     goomba_positions = detected_objects["goomba"]
     pipe_upper_positions = detected_objects["pipe_upper"]
-    block_positions = detected_objects["blocks"]
+    ground_block_positions = detected_objects["ground_block"]
+    step_block_positions = detected_objects["step_block"]
     koopa_positions = detected_objects["koopas"]
 
     # Default action
     action = 1  # corresponds to running right in SIMPLE_MOVEMENT
 
-    if mario_positions and goomba_positions:
+    if mario_positions:
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
+    else:
+        mario_central_x = 0
+
+    if goomba_positions:
         for goomba_position in goomba_positions:
             distance = goomba_position[0] - mario_central_x
             if 0 < distance <= 20:
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
 
-    if mario_positions and koopa_positions:
-        mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
+    if koopa_positions:
         for koopa_position in koopa_positions:
             distance = koopa_position[0] - mario_central_x
             if 0 < distance <= 25:
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
     
-    if mario_positions and pipe_upper_positions:
-        mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
+    if pipe_upper_positions:
         for pipe_position in pipe_upper_positions:
             distance = pipe_position[0] - mario_central_x
             if 0 < distance <= 45:
                 action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
                 break
-    
-    if mario_positions:
-        if len(block_positions) < 4:
-            action = 4
+
+    if step_block_positions:
+        for step_position in step_block_positions:
+            distance = step_position[0] - mario_central_x
+            if distance <= 20:
+                action = 4
+                break
+
+    if len(ground_block_positions) < 4:
+        action = 4
+
+    print(mario_central_x, mario_last_x)
+    mario_last_x = mario_central_x    
 
     return action, detected_objects
 
@@ -160,10 +163,8 @@ for step in range(10000):
     cv2.imshow("Debug Observation", cv2.cvtColor(observation_with_borders, cv2.COLOR_RGB2BGR))
     cv2.waitKey(1)  # To update the window
 
-    #print(action)
     obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         observation, info = env.reset()
 
 env.close()
-
