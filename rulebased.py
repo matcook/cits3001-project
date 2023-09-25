@@ -50,9 +50,9 @@ def detect_objects(observation_bgr, templates, threshold, roi=None):
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
     mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
-
     if mario_positions:
         y_end = mario_positions[0][1] + 70
+        #print(mario_positions[0][1])
     else:
         y_end = observation_bgr.shape[0]
     
@@ -145,12 +145,24 @@ def rule_based_action(observation):
                 action = 4
                 break
 
-    if step_block_positions and not ground_block_positions:
-        action = 4
     
     # Jump over gaps
     if len(ground_block_positions) < 4:
         action = 4
+    
+    #if mario at max height
+    if mario_positions: 
+        if mario_positions[0][1] < 126:
+            action = 3
+    #if step_block_positions and not ground_block_positions:
+        #if len(step_block_positions) <= 2:
+            #action = 4
+
+    #if step_block_positions and not ground_block_positions:
+        #action = 4
+    #if len(step_block_positions) == 6 and len(ground_block_positions) == 0:
+        #action = 3 
+        
 
     # Get unstuck
     if last_ground_block_positions == ground_block_positions:
@@ -161,15 +173,15 @@ def rule_based_action(observation):
     if last_ground_block_positions_timer in range(50, 70):
         action = 6
 
-    if last_ground_block_positions_timer in range(70, 90):
+    if last_ground_block_positions_timer in range(70, 100):
         action = 1
 
-    if last_ground_block_positions_timer in range(90, 130):
+    if last_ground_block_positions_timer in range(100, 140):
         action = 4
 
     if last_ground_block_positions_timer > 140:
         last_ground_block_positions_timer = 0
-
+    
     last_ground_block_positions = ground_block_positions
 
     return action, detected_objects
