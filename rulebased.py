@@ -15,7 +15,6 @@ PIPE_THRESHOLD = 0.7
 KOOPA_THRESHOLD = 0.7
 BLOCK_THRESHOLD = 0.8
 
-
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
 ground_block_template = cv2.imread('templates/block2.png', cv2.IMREAD_COLOR)
@@ -24,8 +23,8 @@ koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for 
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
-mario_last_x = 0
-mario_last_x_timer = 0
+last_ground_block_positions = []
+last_ground_block_positions_timer = 0
 
 def detect_objects(observation_bgr, templates, threshold, roi=None):
     best_locations = []
@@ -51,9 +50,14 @@ def detect_objects(observation_bgr, templates, threshold, roi=None):
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
     mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
+
+    if mario_positions:
+        y_end = mario_positions[0][1] + 70
+    else:
+        y_end = observation_bgr.shape[0]
     
     x_start, x_end = observation_bgr.shape[1] // 2, HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
-    y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0]
+    y_start = VERTICAL_DISTANCE 
     roi = (x_start, x_end, y_start, y_end)
     
     return {
@@ -94,8 +98,8 @@ def draw_borders_on_detected_objects(observation, detected_objects):
     return observation
 
 def rule_based_action(observation):
-    global mario_last_x
-    global mario_last_x_timer
+    global last_ground_block_positions
+    global last_ground_block_positions_timer
 
     detected_objects = detect_all_objects(observation)
     mario_positions = detected_objects["mario"]
@@ -137,15 +141,36 @@ def rule_based_action(observation):
     if step_block_positions:
         for step_position in step_block_positions:
             distance = step_position[0] - mario_central_x
-            if distance <= 20:
+            if distance <= 15:
                 action = 4
                 break
 
+    if step_block_positions and not ground_block_positions:
+        action = 4
+    
+    # Jump over gaps
     if len(ground_block_positions) < 4:
         action = 4
 
-    print(mario_central_x, mario_last_x)
-    mario_last_x = mario_central_x    
+    # Get unstuck
+    if last_ground_block_positions == ground_block_positions:
+        last_ground_block_positions_timer += 1
+    else:
+        last_ground_block_positions_timer = 0
+
+    if last_ground_block_positions_timer in range(50, 70):
+        action = 6
+
+    if last_ground_block_positions_timer in range(70, 90):
+        action = 1
+
+    if last_ground_block_positions_timer in range(90, 130):
+        action = 4
+
+    if last_ground_block_positions_timer > 140:
+        last_ground_block_positions_timer = 0
+
+    last_ground_block_positions = ground_block_positions
 
     return action, detected_objects
 
@@ -157,6 +182,7 @@ observation, info = env.reset()
 
 for step in range(10000):
     action, detected_objects = rule_based_action(observation)
+    print(SIMPLE_MOVEMENT[action])
     
     # Visual debug: Drawing borders around detected objects
     observation_with_borders = draw_borders_on_detected_objects(observation.copy(), detected_objects)
