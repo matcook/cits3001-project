@@ -9,7 +9,12 @@ print(SIMPLE_MOVEMENT)
 
 HORIZONTAL_DISTANCE = 60
 VERTICAL_DISTANCE = 120
-MATCH_THRESHOLD = 0.46
+MARIO_THRESHOLD = 0.46
+GOOMBA_THRESHOLD = 0.6
+PIPE_THRESHOLD = 0.7
+KOOPA_THRESHOLD = 0.7
+BLOCK_THRESHOLD = 0.8
+
 
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
@@ -22,7 +27,7 @@ pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_
 #tall_mario_templates = [cv2.imread(f'templates/tall_mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C']]
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
-def detect_objects(observation_bgr, templates, roi=None):
+def detect_objects(observation_bgr, templates, threshold, roi=None):
     best_locations = []
 
     if roi:  # If a Region of Interest (ROI) is provided
@@ -31,7 +36,7 @@ def detect_objects(observation_bgr, templates, roi=None):
 
     for template in templates:
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
-        threshold = MATCH_THRESHOLD
+        threshold = threshold
         loc = np.where(res >= threshold)
         
         if loc[0].size:
@@ -46,7 +51,7 @@ def detect_objects(observation_bgr, templates, roi=None):
 def detect_all_objects(observation):
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
     #mario_positions = detect_objects(observation_bgr, mario_templates + tall_mario_templates)
-    mario_positions = detect_objects(observation_bgr, mario_templates)
+    mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
     
     # Calculate ROI based on Mario's position
     #if mario_positions:
@@ -60,11 +65,11 @@ def detect_all_objects(observation):
     
     return {
         "mario": mario_positions,
-        "goomba": detect_objects(observation_bgr, [goomba_template], roi),
-        "blocks": detect_objects(observation_bgr, blocks_templates, roi),
-        "koopas": detect_objects(observation_bgr, koopas_templates, roi),
+        "goomba": detect_objects(observation_bgr, [goomba_template], GOOMBA_THRESHOLD, roi),
+        "blocks": detect_objects(observation_bgr, blocks_templates, BLOCK_THRESHOLD, roi),
+        "koopas": detect_objects(observation_bgr, koopas_templates, KOOPA_THRESHOLD, roi),
         #"mushroom": detect_objects(observation_bgr, [mushroom_template], roi),
-        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], roi),
+        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], PIPE_THRESHOLD, roi),
         #"pipe_lower": detect_objects(observation_bgr, [pipe_lower_template], roi),
         #"question": detect_objects(observation_bgr, question_templates, roi)
     }
