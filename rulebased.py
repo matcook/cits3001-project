@@ -9,6 +9,7 @@ print(SIMPLE_MOVEMENT)
 
 HORIZONTAL_DISTANCE = 60
 VERTICAL_DISTANCE = 120
+MATCH_THRESHOLD = 0.46
 
 # Load all templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
@@ -30,7 +31,7 @@ def detect_objects(observation_bgr, templates, roi=None):
 
     for template in templates:
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
-        threshold = 0.46
+        threshold = MATCH_THRESHOLD
         loc = np.where(res >= threshold)
         
         if loc[0].size:
@@ -48,15 +49,14 @@ def detect_all_objects(observation):
     mario_positions = detect_objects(observation_bgr, mario_templates)
     
     # Calculate ROI based on Mario's position
-    if mario_positions:
-        mario_x, mario_y = mario_positions[0]
-        mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
-        x_start, x_end = mario_x + mario_width, min(mario_x + mario_width + HORIZONTAL_DISTANCE, observation_bgr.shape[1])
-        #y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
-        y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0] # Keeping the full height for simplicity
-        roi = (x_start, x_end, y_start, y_end)
-    else:
-        roi = None
+    #if mario_positions:
+    #mario_x, mario_y = mario_positions[0]
+    #mario_width, mario_height = mario_templates[0].shape[1], mario_templates[0].shape[0]
+    x_start, x_end = observation_bgr.shape[1] // 2, HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
+    #y_start, y_end = 0, observation_bgr.shape[0]  # Keeping the full height for simplicity
+    y_start, y_end = VERTICAL_DISTANCE,  observation_bgr.shape[0] # Keeping the full height for simplicity
+    roi = (x_start, x_end, y_start, y_end)
+    
     
     return {
         "mario": mario_positions,
