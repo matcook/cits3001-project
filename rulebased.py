@@ -5,17 +5,32 @@ import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import gym
 
+# Actions include
+# 0. None
+# 1. Right
+# 2. Right jump
+# 3. Right sprint
+# 4. Right sprint jump
+# 5. Jump
+# 6. Left
 print(SIMPLE_MOVEMENT)
 
+##################
+# Initialisation #
+##################
+
+# Constants for area of screen to look in
 HORIZONTAL_DISTANCE = 60
 VERTICAL_DISTANCE = 120
+
+# Image matching thresholds
 MARIO_THRESHOLD = 0.46
 GOOMBA_THRESHOLD = 0.6
 PIPE_THRESHOLD = 0.7
 KOOPA_THRESHOLD = 0.7
 BLOCK_THRESHOLD = 0.8
 
-# Load all templates
+# Load templates
 mario_templates = [cv2.imread(f'templates/mario{i}.png', cv2.IMREAD_COLOR) for i in ['A', 'B', 'C', 'D', 'E', 'F', 'G']]
 ground_block_template = cv2.imread('templates/block2.png', cv2.IMREAD_COLOR)
 step_block_template = cv2.imread('templates/block4.png', cv2.IMREAD_COLOR)
@@ -23,8 +38,14 @@ koopas_templates = [cv2.imread(f'templates/koopa{i}.png', cv2.IMREAD_COLOR) for 
 pipe_upper_template = cv2.imread('templates/pipe_upper_section.png', cv2.IMREAD_COLOR)
 goomba_template = cv2.imread('templates/goomba.png', cv2.IMREAD_COLOR)
 
+# Keeps track of last position of ground blocks
+# Used to get agent unstuck if hasn't moved after period of time
 last_ground_block_positions = []
 last_ground_block_positions_timer = 0
+
+####################
+# Object detection #
+####################
 
 def detect_objects(observation_bgr, templates, threshold, roi=None):
     best_locations = []
@@ -55,7 +76,6 @@ def detect_all_objects(observation):
     if mario_positions:
         y_end = mario_positions[0][1] + 70
         x_start = mario_positions[0][0] + 5
-        #print(mario_positions[0][1])
     else:
         y_end = observation_bgr.shape[0]
         x_start = observation_bgr.shape[1] // 2
@@ -71,6 +91,10 @@ def detect_all_objects(observation):
         "koopas": detect_objects(observation_bgr, koopas_templates, KOOPA_THRESHOLD, roi),
         "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], PIPE_THRESHOLD, roi),
     }
+
+########################
+# Debug window drawing #
+########################
 
 def draw_borders_on_detected_objects(observation, detected_objects):
     # Default colors in BGR format
@@ -100,6 +124,10 @@ def draw_borders_on_detected_objects(observation, detected_objects):
     
     return observation
 
+####################
+# Game/Agent rules #
+####################
+
 def rule_based_action(observation):
     global last_ground_block_positions
     global last_ground_block_positions_timer
@@ -113,7 +141,7 @@ def rule_based_action(observation):
     koopa_positions = detected_objects["koopas"]
 
     # Default action
-    action = 1  # corresponds to running right in SIMPLE_MOVEMENT
+    action = 1
 
     if mario_positions:
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
@@ -125,21 +153,21 @@ def rule_based_action(observation):
         for goomba_position in goomba_positions:
             distance = goomba_position[0] - mario_central_x
             if 0 < distance <= 20:
-                action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
+                action = 4
                 break
 
     if koopa_positions:
         for koopa_position in koopa_positions:
             distance = koopa_position[0] - mario_central_x
             if 0 < distance <= 25:
-                action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
+                action = 4
                 break
     
     if pipe_upper_positions:
         for pipe_position in pipe_upper_positions:
             distance = pipe_position[0] - mario_central_x
             if 0 < distance <= 45:
-                action = 4  # corresponds to jumping right in SIMPLE_MOVEMENT
+                action = 4
                 break
 
     if step_block_positions:
@@ -148,7 +176,6 @@ def rule_based_action(observation):
             if distance <= 15:
                 action = 4
                 break
-
     
     # Jump over gaps
     if len(ground_block_positions) < 4:
@@ -160,16 +187,7 @@ def rule_based_action(observation):
             action = 3
 
         elif mario_positions[0][1] > 126 and step_block_positions:
-            action = 4
-    #if step_block_positions and not ground_block_positions:
-        #if len(step_block_positions) <= 2:
-            #action = 4
-    
-    #if step_block_positions and not ground_block_positions:
-        #action = 4
-    #if len(step_block_positions) == 6 and len(ground_block_positions) == 0:
-        #action = 3 
-        
+            action = 4  
 
     # Get unstuck
     if last_ground_block_positions == ground_block_positions:
@@ -193,22 +211,31 @@ def rule_based_action(observation):
 
     return action, detected_objects
 
+###################
+# Run environment #
+###################
+
 # Setup environment
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
 env = JoypadSpace(env, SIMPLE_MOVEMENT)
 
 observation, info = env.reset()
 
+# Main gameloop
 for step in range(10000):
+    # Select action based on observation of game state
     action, detected_objects = rule_based_action(observation)
-    #print(SIMPLE_MOVEMENT[action])
     
-    # Visual debug: Drawing borders around detected objects
+    # Visual debug
+    # Draw borders around detected objects
     observation_with_borders = draw_borders_on_detected_objects(observation.copy(), detected_objects)
     cv2.imshow("Debug Observation", cv2.cvtColor(observation_with_borders, cv2.COLOR_RGB2BGR))
-    cv2.waitKey(1)  # To update the window
+    cv2.waitKey(1)
 
+    # Step environment
     obs, reward, terminated, truncated, info = env.step(action)
+
+    # Handle game reseting if agent dies
     if terminated or truncated:
         observation, info = env.reset()
 
