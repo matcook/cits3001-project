@@ -80,18 +80,27 @@ def detect_objects(observation_bgr, templates, threshold, region_of_interest=Non
     return best_locations
 
 def detect_all_objects(observation):
+    # Convert observation colour space
     observation_bgr = cv2.cvtColor(observation, cv2.COLOR_RGB2BGR)
+
+    # Detect Mario across entire screen
     mario_positions = detect_objects(observation_bgr, mario_templates, MARIO_THRESHOLD)
+
+    # If Mario found use his relative location, otherwise use entire screen
     if mario_positions:
         y_end = mario_positions[0][1] + 70
         x_start = mario_positions[0][0] + 5
     else:
         y_end = observation_bgr.shape[0]
         x_start = observation_bgr.shape[1] // 2
+    
+    # Set region of interest based on either Mario's position
+    # or entire window if Mario can't be found
     x_end = HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
     y_start = VERTICAL_DISTANCE 
     region_of_interest = (x_start, x_end, y_start, y_end)
     
+    # Dictionary containing all locations for desired objects
     return {
         "mario": mario_positions,
         "goomba": detect_objects(observation_bgr, [goomba_template], GOOMBA_THRESHOLD, region_of_interest),
