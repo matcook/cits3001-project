@@ -1,6 +1,6 @@
 # CITS3001 Project
 
-Completed by Mathew Cook (23222623) and Simon Eason (23389488)
+Completed by Mathew Cook (23222623) and Simon Eason (23389488).
 
 ## Setup
 
