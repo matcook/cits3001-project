@@ -47,22 +47,31 @@ last_ground_block_positions_timer = 0
 # Object detection #
 ####################
 
-def detect_objects(observation_bgr, templates, threshold, roi=None):
+def detect_objects(observation_bgr, templates, threshold, region_of_interest=None):
     best_locations = []
+    x_start = 0
+    y_start = 0
 
-    if roi:  # If a Region of Interest (ROI) is provided
-        x_start, x_end, y_start, y_end = roi
+    # Narrow down search area for objects to just region of interest
+    if region_of_interest:
+        x_start, x_end, y_start, y_end = region_of_interest
         observation_bgr = observation_bgr[y_start:y_end, x_start:x_end]
 
+    # Iterate through provided templates
+    # Function is called per enemy/obstacle, but some have more than one template
     for template in templates:
+        # Check if template actually present
         if observation_bgr.shape[0] < template.shape[0] or observation_bgr.shape[1] < template.shape[1]:
-            continue  # Skip this template
+            continue
+
+        # Match template and narrow results down to ones above threshold
         res = cv2.matchTemplate(observation_bgr, template, cv2.TM_CCOEFF_NORMED)
-        threshold = threshold
         loc = np.where(res >= threshold)
         
+        # Ensure matches are still present after filtering
         if loc[0].size:
-            if roi:  # Adjust the location based on the ROI
+            if region_of_interest:  
+                # Adjust the location based on the ROI
                 adjusted_loc = [x + x_start for x in loc[1]], [y + y_start for y in loc[0]]
                 best_locations.extend(zip(*adjusted_loc))
             else:
@@ -81,15 +90,15 @@ def detect_all_objects(observation):
         x_start = observation_bgr.shape[1] // 2
     x_end = HORIZONTAL_DISTANCE + observation_bgr.shape[1] // 2
     y_start = VERTICAL_DISTANCE 
-    roi = (x_start, x_end, y_start, y_end)
+    region_of_interest = (x_start, x_end, y_start, y_end)
     
     return {
         "mario": mario_positions,
-        "goomba": detect_objects(observation_bgr, [goomba_template], GOOMBA_THRESHOLD, roi),
-        "ground_block": detect_objects(observation_bgr, [ground_block_template], BLOCK_THRESHOLD, roi),
-        "step_block": detect_objects(observation_bgr, [step_block_template], BLOCK_THRESHOLD, roi),
-        "koopas": detect_objects(observation_bgr, koopas_templates, KOOPA_THRESHOLD, roi),
-        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], PIPE_THRESHOLD, roi),
+        "goomba": detect_objects(observation_bgr, [goomba_template], GOOMBA_THRESHOLD, region_of_interest),
+        "ground_block": detect_objects(observation_bgr, [ground_block_template], BLOCK_THRESHOLD, region_of_interest),
+        "step_block": detect_objects(observation_bgr, [step_block_template], BLOCK_THRESHOLD, region_of_interest),
+        "koopas": detect_objects(observation_bgr, koopas_templates, KOOPA_THRESHOLD, region_of_interest),
+        "pipe_upper": detect_objects(observation_bgr, [pipe_upper_template], PIPE_THRESHOLD, region_of_interest),
     }
 
 ########################
