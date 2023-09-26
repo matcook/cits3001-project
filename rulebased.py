@@ -132,6 +132,7 @@ def rule_based_action(observation):
     global last_ground_block_positions
     global last_ground_block_positions_timer
 
+    # Separate detected objects
     detected_objects = detect_all_objects(observation)
     mario_positions = detected_objects["mario"]
     goomba_positions = detected_objects["goomba"]
@@ -143,12 +144,13 @@ def rule_based_action(observation):
     # Default action
     action = 1
 
+    # Get centre of agent's detected x position
     if mario_positions:
         mario_central_x = mario_positions[0][0] + mario_templates[0].shape[1] // 2
-        print(mario_positions[0][1])
     else:
         mario_central_x = 0
 
+    # Jump over Goombas
     if goomba_positions:
         for goomba_position in goomba_positions:
             distance = goomba_position[0] - mario_central_x
@@ -156,6 +158,7 @@ def rule_based_action(observation):
                 action = 4
                 break
 
+    # Jump over Koopas
     if koopa_positions:
         for koopa_position in koopa_positions:
             distance = koopa_position[0] - mario_central_x
@@ -163,6 +166,7 @@ def rule_based_action(observation):
                 action = 4
                 break
     
+    # Jump over pipes
     if pipe_upper_positions:
         for pipe_position in pipe_upper_positions:
             distance = pipe_position[0] - mario_central_x
@@ -170,6 +174,7 @@ def rule_based_action(observation):
                 action = 4
                 break
 
+    # Jump up steps
     if step_block_positions:
         for step_position in step_block_positions:
             distance = step_position[0] - mario_central_x
@@ -181,20 +186,22 @@ def rule_based_action(observation):
     if len(ground_block_positions) < 4:
         action = 4
     
-    #if mario at max height
+    # Reset action to sprint right if in top part of screen
+    # Used to jump over gaps
     if mario_positions: 
         if mario_positions[0][1] < 126:
             action = 3
-
         elif mario_positions[0][1] > 126 and step_block_positions:
             action = 4  
 
-    # Get unstuck
+    # If still in same place, then likely stuck on something, so increment timer
     if last_ground_block_positions == ground_block_positions:
         last_ground_block_positions_timer += 1
     else:
         last_ground_block_positions_timer = 0
 
+    # Move left, then sprint right, then jump right
+    # Based on timer values
     if last_ground_block_positions_timer in range(50, 55):
         action = 6
 
@@ -204,6 +211,7 @@ def rule_based_action(observation):
     if last_ground_block_positions_timer in range(65, 75):
         action = 2
 
+    # Reset timer
     if last_ground_block_positions_timer > 75:
         last_ground_block_positions_timer = 0
     
