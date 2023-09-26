@@ -97,7 +97,7 @@ def detect_all_objects(observation):
 ########################
 
 def draw_borders_on_detected_objects(observation, detected_objects):
-    # Default colors in BGR format
+    # Highlighting colours in BGR format
     color_dict = {
         "mario": (0, 0, 255),
         "goomba": (0, 255, 0),
@@ -107,21 +107,30 @@ def draw_borders_on_detected_objects(observation, detected_objects):
         "pipe_upper": (255, 0, 255),
     }
 
+    # Iterate through object types
     for obj_type, positions in detected_objects.items():
         for position in positions:
             top_left = position
+
             # Try to find the template variable using both singular and plural form
             template_name_singular = f"{obj_type}_template"
             template_name_plural = f"{obj_type}_templates"
+
+            # Get template from global list of templates
             template = globals().get(template_name_singular, 
                                      globals().get(template_name_plural, [None])[0])
             
+            # No valid template
             if template is None:
                 continue
             
+            # Calculate bottom right point of image
             bottom_right = (top_left[0] + template.shape[1], top_left[1] + template.shape[0])
+
+            # Draw rectangle over object
             cv2.rectangle(observation, top_left, bottom_right, color_dict.get(obj_type, (0, 0, 255)), 2)  # 2 is the thickness of the rectangle border
     
+    # Observation now has game state with borders drawn over detected object
     return observation
 
 ####################
