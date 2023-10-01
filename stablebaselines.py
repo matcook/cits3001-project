@@ -6,6 +6,7 @@ import os
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv
 from stable_baselines3.common.callbacks import BaseCallback
+from sys import argv
 
 # Taken from https://github.com/nicknochnack/MarioRL/blob/main/Mario%20Tutorial.ipynb
 class TrainAndLoggingCallback(BaseCallback):
@@ -35,17 +36,20 @@ env = GrayScaleObservation(env, keep_dim=True)
 env = DummyVecEnv([lambda: env]) # type: ignore
 env = VecFrameStack(env, 4, channels_order="last")
 
-# Create model and logger
-logger = TrainAndLoggingCallback(check_freq=100000, save_path="./models")
-model = PPO("CnnPolicy", env, verbose=1, learning_rate=0.00001, n_steps=512)
+# Run training or model based on CLI value
+# If value given then run that model
+if len(argv) != 2:
+    # Create model and logger
+    logger = TrainAndLoggingCallback(check_freq=100000, save_path="./models")
+    model = PPO("CnnPolicy", env, verbose=1, learning_rate=0.00001, n_steps=512, tensorboard_log="./logs")
 
-model.learn(total_timesteps=10000000, callback=logger)
+    model.learn(total_timesteps=10000000, callback=logger)
+else:
+    model = PPO.load(argv[1])
 
-# model = PPO.load("model.zip")
+    observation = env.reset()
 
-# observation = env.reset()
-
-# while True:
-#     action, _ = model.predict(observation)
-#     state, reward, done, info = env.step(action)
-#     env.render()
+    while True:
+        action, _ = model.predict(observation)
+        state, reward, done, info = env.step(action)
+        env.render()
