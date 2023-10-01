@@ -45,10 +45,12 @@ if len(argv) != 2:
 
     model.learn(total_timesteps=10000000, callback=logger)
 else:
+    # Load model from CLI
     model = PPO.load(argv[1])
 
     observation = env.reset()
 
+    # Run agent in environment
     while True:
         action, _ = model.predict(observation)
         state, reward, done, info = env.step(action)
