@@ -1,3 +1,5 @@
-venv/
-models/
+*venv/
+*models/
 logs/
+*.zip
+*.pdf
