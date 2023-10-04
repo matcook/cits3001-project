@@ -49,6 +49,8 @@ Additionally, the types of rules used and how they are implemented are flexible.
 
 From anecdotal observation, it took the PPO agent (Agent 2) approximately 250k steps to complete the first level when training in the `gym-super-mario-bros-v3` environment. When running on a computer with an Nvidia GTX 1070ti, it took 45 minutes for the algorithm to be trained to this level. In comparison to the amount of time it took to tune the rule-based agent, this isn't actually very long, however the PPO agent only completed the first level once with that level of training, and was still very inconsistent with its performance (i.e. How far to the right it got), often dying upon encountering the first obstacle. Many hours, sometimes days of training are required to get the PPO agent to a consistently performing state.
 
+[talk about v3 model being able to play v0 environment to same level but with less training. always converges to running into first enemy, tried to solve by only using first level]
+
 ## Visualisation and debugging
 
 The rule-based agent uses custom optical template recognition functions that return the location of desired templates, namely the location of the Mario player character, the location of moving enemies (e.g. Goomba, Koopas) and the location of static obstacles (e.g. pipes, gaps, etc.). This collection of location data is passed to the function `draw_borders_on_detected_objects()`, which draws coloured borders around the templates that have been detected in the scene. An example of this is shown below:
@@ -56,3 +58,6 @@ The rule-based agent uses custom optical template recognition functions that ret
 ![Borders on detected objects](report_assets/rule_based_debug.png)
 
 By restricting the borders to only be drawn in the area the agent is looking for obstacles, it is possible to see what the agent sees, and thus fine tune the rules that define how early the agent should jump to clear the obstacle.
+
+[talk about PPO agent appearing to do well in training, but that model doesn't do well. have to subjectively pick model that gets furthest]
+
