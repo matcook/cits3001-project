@@ -85,3 +85,10 @@ Additionally, the window that appeared during training showed the agent showed t
 
 Overall, a trial-and-error approach was used to develop this agent.
 
+
+
+
+
+We also tried implementing our own version of a reward system to see if we could improve the performance of the algorithm. However the inbuilt reward function of the mario gym environment is already based on 3 criteria: moving right, not standing still and not dying which is effectively the only thing we can check for - meaning that our only option was to tweak the reward values for each of these criteria. The problem with this again is the amount of time the model must be trained in order to converge to a decent point. Any slight variation in the reward function would then require additional training to see if it had any effect on the model's performance. This made testing tediously slow. 
+
+Another change we made was to limit the number of movement actions available so that the model had less options to choose from. There was no need for a left action or a standing jump action as that would not get us closer to the goal of finishing the level. While we did have some success with the lower movement action space and custom reward function we essentially ran in to the same issue as the default PPO model where the model would converge to a point that was unable to progress satisfactorily through the level. In this case we specifically had issues with mario not jumping over gaps - even after training the model for 20,000,000 steps it was unable to learn how to clear a gap in the ground. Research into this suggested that we could hard code the level gaps into the reward function to reward jumping when near the gaps, but as each level is different this would not be an effective way of combatting the problem and would instead be more akin to the rule-based solution we implemented earlier. Because of this we decided to use the default PPO model as it was more consistent.
