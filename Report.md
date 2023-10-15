@@ -10,14 +10,14 @@ The two agents created as part of this project are a simple rule-based agent, an
 
 This agent is based upon a simple set of rules that determines what actions to take at a given time. A series of templates are loaded into memory, containing the different tiles that appear in the game. Using OpenCV, the program determines which of these tile sets appear on the screen and where using the custom ``detect_objects()`` and ``detect_all_objects()`` functions, returning the found entities to the agent.
 
-Once the location of the Mario character has been found, the area that the agent searches in (Denoted the "Region of Interest") is narrowed down to only consider the entities within a short distance of Mario, thus greatly reducing the amount of processing that needs to take place as the entire window no longer needs to be searched.
+Once the location of the Mario character has been found, the area that the agent searches in (denoted the "Region of Interest") is narrowed down to only consider the entities within a short distance of Mario, thus greatly reducing the amount of processing that needs to take place as the entire window no longer needs to be searched.
 
 Once the location data for obstacles and Mario has been obtained, it's passed to the ruleset function ``rule_based_action()``, which then determines which action to take. This occurs for every step of the game, and the rules can be broken into two main ones:
 
 1.   If there is an obstacle (e.g. Gooma, Koopa, pipe, step, or gap) jump over it once a certain distance away.
 2.   If haven't moved after set amount of time, then most likely stuck. Move left slightly then jump right as high as possible.
 
-The strengths of this agent are that it is relatively easy to implement (The most time consuming part being tuning values) and that it performs very consistently given a deterministic starting state.
+The strengths of this agent are that it is relatively easy to implement (the most time consuming part being tuning values) and that it performs very consistently given a deterministic starting state.
 
 However, the weaknesses of this approach make it less than ideal for all scenarios. It requires tuning of the specific values used in the rules to jump at the necessary times, and as a result is highly overfitted to the first level. Especially with the rule to get the agent unstuck, the values used here are tuned for locations where it was observed the agent would consistently get stuck. As development progressed, these settings had to be constantly changed to ensure it continued to reach the end.
 
@@ -37,9 +37,9 @@ This algorithm has been trivially implemented for this agent, taking the environ
 
 As the algorithm runs and learns, we have configured it to save the model at set intervals to allow for viewing of the agent's progress over time. Using Nvidia's CUDA GPU platform, the agent was trained on our computers using the graphics card.
 
-The primary strength of a PPO agent is is adaptability. Given any (suitably setup) environment and a respective reward function, and the agent will be able to develop a strategy to maximise this reward. They are much more suited to generalising rules than a rule-based agent as they don't rely on a small and hard-defined set of rules, rather using a policy that is designed to be extrapolated from to allow for dealing with unseen situations (i.e. Ones noy encountered during training).
+The primary strength of a PPO agent is adaptability. Given any (suitably setup) environment and a respective reward function, and the agent will be able to develop a strategy to maximise this reward. They are much more suited to generalising rules than a rule-based agent as they don't rely on a small and hard-defined set of rules, rather using a policy that is designed to be extrapolated from to allow for dealing with unseen situations (i.e. Ones not encountered during training).
 
-Additionally, transfer learning is big strength of a PPO agent. During this project, an agent was trained on the `v0` environment, with training stopping after 4.5m timesteps. Another agent was trained on the more simplistic `v3` environment, and only required 800k timesteps to reach (subjectively) the same level of competence. Admittedly, neither agent was capable of completing the first level repeatedly, however they were able to semi-consistently reach the same point.
+Additionally, transfer learning is big strength of a PPO agent. During this project, an agent was trained on the `v0` environment, with training stopping after 4.5m timesteps. Another agent was trained on the more simplistic `v3` environment, and only required 800k timesteps to reach (subjectively) the same level of competence. Admittedly, neither agent was capable of completing the first level repeatedly, however they were able to semi-consistently reach the same point. These model files have been included with the project submission.
 
 The weakness of a PPO approach is the training time. Even with a decently powerful computer and GPU, training still took multiple hours for the agent to reach some level of competence. From anecdotal observation, it took the PPO agent approximately 250k steps to complete the first level when training in the `gym-super-mario-bros-v3` environment. When running on a computer with an Nvidia GTX 1070ti, it took 45 minutes for the algorithm to be trained to this level. In comparison to the amount of time it took to tune the rule-based agent, this isn't actually very long, however the PPO agent only completed the first level once with that level of training, and was still very inconsistent with its performance (i.e. How far to the right it got), often dying upon encountering the first obstacle. Many hours, sometimes days of training are required to get the PPO agent to a consistently performing state.
 
@@ -61,7 +61,13 @@ For example, the training for this agent was left to run overnight, finishing wi
 
 We believe the agent is trying to maximise the reward it obtains is as short a time possible, and that it determined that dying repeatedly was the best way of doing that.
 
-As such, a subjective/observation approach was used to pick the model that could consistently make it the furthest (From the models saved at set intervals during training). Models from later in the training cycle all appeared to be converging to this unexplained state, so earlier ones were primarily selected.
+As such, a subjective/observational approach was used to pick the model that could consistently make it the furthest (from the models saved at set intervals during training). Models from later in the training cycle all appeared to be converging to this unexplained state, so earlier ones were primarily selected.
+
+We tried implementing our own version of a reward system to see if we could improve performance. However, the inbuilt reward function of the environment is already based on 3 criteria: moving right, not standing still and not dying, which is effectively the only thing we can check for, meaning that our only option was to tweak the reward values for each of these criteria. The problem with this again is the amount of time the model must be trained in order to converge to a decent point.
+
+Another change we made was to limit the number of movement actions available so that the model had fewer options to choose from. There was no need for a left action or a standing jump action as that would not get us closer to the goal of finishing the level. 
+
+While we did have some success with the lower movement action space and custom reward function we essentially ran in to the same issue as the default PPO model where it would converge to a point that was unable to progress satisfactorily through the level. In this case we specifically had issues with Mario not jumping over gaps; even after training the model for 20m steps it was unable to learn how to clear a gap in the ground. Research into this and how others solved it suggested that we could hard code the level gaps into the reward function to reward jumping when near the gaps, but as each level is different this would not be an effective way of generalising the algorithm and would instead be more akin to a rule-based solution.
 
 ## Visualisation and debugging
 
@@ -71,24 +77,16 @@ The rule-based agent uses custom optical template recognition functions that ret
 
 ![Borders on detected objects](report_assets/rule_based_debug.png)
 
-By restricting the borders to only be drawn in the area the agent is looking for obstacles, it is possible to see what the agent sees, and thus fine tune the rules that define how early the agent should jump to clear the obstacle. By restricting the area the agent looks for obstacles, it removes the need to check the entire screen, and thus greatly improves the framerate the environment runs at. However, a "failsafe" was implemented, so if the algorithm lost sight of the Mario character at any point in that restricted region, then it would search the entire view until the character was located, updating the area afterwards to include this new position.
+By restricting the borders to only be drawn in the area the agent is looking for obstacles, it is possible to see what the agent sees, and thus fine tune the rules that define how early the agent should jump to clear the obstacle. By restricting the area the agent looks for obstacles, it removes the need to check the entire screen, and thus greatly improves the framerate the environment runs at. However, a "failsafe" was implemented, so that if the algorithm loses sight of the Mario character at any point in that restricted region, then it would search the entire view until the character was located, updating the area afterwards to include this new position.
 
 ### Agent 2
 
-Developing and debugging the PPO agent was significantly more difficult. As stated earlier, the PPO algorithm acts as a sort of "black box", with us having very little understanding about the decisions it was making. There are several "knobs and dials" that can be adjusted for this algorithm to produce different results, namely `learning_rate`, `n_steps` and the environment used.
+Developing and debugging the PPO agent was significantly more difficult. As stated earlier, the PPO algorithm acts as a sort of "black box", with us having very little understanding about the decisions it was making. There are several "knobs and dials" that can be adjusted for this algorithm to produce different results, namely `learning_rate`, `n_steps`, the reward function and the environment used.
 
-In an attempt to prevent converging to the strange "run at the first enemy and die" state, the learning rate was adjusted up and down, with seemingly little change occurring after hours of training. We attempted to train using the `v3` environment, but the same issue occurred. However, using this environment, then running the model in the `v0` one did show the agent was able to transfer its learning (As previously stated).
+In an attempt to prevent converging to the strange "run at the first enemy and die" state, the learning rate was adjusted up and down, with seemingly little change occurring after hours of training. We attempted to train using the `v3` environment, but the same issue occurred. However, using this environment, then running the model in the `v0` one did show the agent was able to transfer its learning (as previously stated).
 
-What also made this agent more difficult to develop was the time it took for a useable agent to be trained. A change would be made to the PPO algorithm's parameters, but we would have to wait hours to see the result of this change. The `tensorboard` tool allowed us to view the logs of the training process, showing things such as `loss` and `explained variance`, but this was of little help when attempting to pick values to use as parameters.
+What also made this agent more difficult to develop was the time it took for a useable agent to be trained. A change would be made to the PPO algorithm's parameters or the reward function, and we would have to wait hours to see the result of this change. The `tensorboard` tool allowed us to view the logs of the training process, showing things such as `loss` and `explained variance`, but this was of little help when attempting to pick values to use as parameters.
 
 Additionally, the window that appeared during training showed the agent showed the agent progressing well, however the agent in the respective model file did not perform as well.
 
 Overall, a trial-and-error approach was used to develop this agent.
-
-
-
-
-
-We also tried implementing our own version of a reward system to see if we could improve the performance of the algorithm. However the inbuilt reward function of the mario gym environment is already based on 3 criteria: moving right, not standing still and not dying which is effectively the only thing we can check for - meaning that our only option was to tweak the reward values for each of these criteria. The problem with this again is the amount of time the model must be trained in order to converge to a decent point. Any slight variation in the reward function would then require additional training to see if it had any effect on the model's performance. This made testing tediously slow. 
-
-Another change we made was to limit the number of movement actions available so that the model had less options to choose from. There was no need for a left action or a standing jump action as that would not get us closer to the goal of finishing the level. While we did have some success with the lower movement action space and custom reward function we essentially ran in to the same issue as the default PPO model where the model would converge to a point that was unable to progress satisfactorily through the level. In this case we specifically had issues with mario not jumping over gaps - even after training the model for 20,000,000 steps it was unable to learn how to clear a gap in the ground. Research into this suggested that we could hard code the level gaps into the reward function to reward jumping when near the gaps, but as each level is different this would not be an effective way of combatting the problem and would instead be more akin to the rule-based solution we implemented earlier. Because of this we decided to use the default PPO model as it was more consistent.
